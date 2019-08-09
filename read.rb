@@ -56,9 +56,13 @@ OptionParser.new do |opt|
   # метод parse, чтобы он заполнил наш хэш options в соответствии с правилами.
 end.parse!
 
-# Вызываем метод find класса Post, который найдет нам нужные записи в
-# соответствии с запросом. Записываем то, что он вернет в переменную result.
-result = Post.find(options[:limit], options[:type], options[:id])
+# Если аргумент id не введен, то метод find_all выбирает записи по параметрам
+if options[:id].nil?
+  result = Post.find_all(options[:limit], options[:type])
+else
+  # иначе метод find_by_id ведет поиск только по id
+  result = Post.find_by_id(options[:id])
+end
 
 if result.is_a? Post
   # Если результат — это один объект класса Post, значит выводим его
