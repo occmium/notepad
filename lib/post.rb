@@ -1,6 +1,8 @@
 # encoding: utf-8
 # Урок 27: [НП2] Классы, наследование
 # Урок 35: [НП2] Блокнот с использованием SQLite
+# Задача 35-3 — Два метода для поиска постов
+# Задача 35-4 — Обработака ошибок открытия базы
 # (с) goodprogrammer.ru
 
 # Подключаем гем для общения с базой данных sqlite3
@@ -56,7 +58,16 @@ class Post
     query += 'LIMIT :limit ' unless limit.nil?
 
     # Готовим запрос в базу, как плов :)
-    statement = db.prepare query
+    # SQLite3::SQLException
+    begin
+      statement = db.prepare query
+    rescue SQLite3::SQLException => error
+      puts "Файл <<#{SQLITE_DB_FILE}>> базы данных при подготовке запроса не найден"
+      puts "***"
+      puts error.message
+      puts "***"
+      exit
+    end
 
     # Загружаем в запрос тип вместо плейсхолдера :type, добавляем лук :)
     statement.bind_param('type', type) unless type.nil?
@@ -64,10 +75,19 @@ class Post
     # Загружаем лимит вместо плейсхолдера :limit, добавляем морковь :)
     statement.bind_param('limit', limit) unless limit.nil?
 
-    # Выполняем запрос и записываем его в переменную result. Там будет массив
+     # Выполняем запрос и записываем его в переменную result. Там будет массив
     # с данными из базы.
-    result = statement.execute!
-
+    # SQLite3::SQLException
+    begin
+      result = statement.execute!
+    rescue SQLite3::SQLException => error
+      puts "Файл <<#{SQLITE_DB_FILE}>>базы данных при запросе и записи в переменную не найден"
+      puts "***"
+      puts error.message
+      puts "***"
+      puts "Это сообщение Вы не увидите!!!!!!!"
+      exit
+    end
     # Закрываем запрос
     statement.close
 
@@ -94,8 +114,16 @@ class Post
     # массив результатов, в нашем случае из одного элемента, т.к. только одна
     # запись в таблице будет соответствовать условию «идентификатор
     # соответствует заданному». Результат сохраняем в переменную result.
-    result = db.execute('SELECT * FROM posts WHERE  rowid = ?', id)
-
+    # SQLite3::SQLException
+    begin
+      result = db.execute('SELECT * FROM posts WHERE  rowid = ?', id)
+    rescue SQLite3::SQLException => error
+      puts "Файл <<#{SQLITE_DB_FILE}>>базы данных при поиске записи по идентификатору не найден"
+      puts "***"
+      puts error.message
+      puts "***"
+      exit
+    end
     # Закрываем соединение с базой. Оно нам больше не нужно, результат запроса
     # у нас сохранен. Обратите внимание, что это аналогично файлам. Важно
     # закрыть соединение с базой как можно скорее, чтобы другие программы
@@ -162,8 +190,8 @@ class Post
     # Дочерние классы сами знают свое представление, но общие для всех детей
     # переменные экземпляра можно заполнить уже сейчас в родительском классе.
     {
-        'type' => self.class.name,
-        'created_at' => @created_at.to_s
+      'type' => self.class.name,
+      'created_at' => @created_at.to_s
     }
     # self — ключевое слово, указывает на «этот объект», то есть конкретный
     # экземпляр класса, где выполняется в данный момент этот код.
@@ -184,23 +212,32 @@ class Post
     # одинаковым для всех.
     post_hash = to_db_hash
 
-    db.execute(
+    # SQLite3::SQLException
+    begin
+      db.execute(
         # Указываем тип запроса
         'INSERT INTO posts (' +
 
-            # Добавляем названия полей таблицы, склеивая ключи хэша через запятую
-            post_hash.keys.join(', ') +
+          # Добавляем названия полей таблицы, склеивая ключи хэша через запятую
+          post_hash.keys.join(', ') +
 
-            # Сообщаем, что сейчас будем передавать значения, указав после VALUES
-            # нужное количество знаков '?', разделенных запятыми. Каждый такой знак
-            # будет воспринят как плейсхолдер для значения, которое мы передадим
-            # дальше.
-            ") VALUES (#{('?,' * post_hash.size).chomp(',')})",
+          # Сообщаем, что сейчас будем передавать значения, указав после VALUES
+          # нужное количество знаков '?', разделенных запятыми. Каждый такой знак
+          # будет воспринят как плейсхолдер для значения, которое мы передадим
+          # дальше.
+          ") VALUES (#{('?,' * post_hash.size).chomp(',')})",
 
         # Наконец, вторым параметром передаем массив значений, которые будут
         # вставлены в запрос вместо плейсхолдеров '?' в нужном порядке.
         post_hash.values
-    )
+      )
+    rescue SQLite3::SQLException => error
+      puts "Файл <<#{SQLITE_DB_FILE}>>базы данных при запросе на вставку новой записи не найден"
+      puts "***"
+      puts error.message
+      puts "***"
+      exit
+    end
 
     # Сохраняем в переменную id записи, которую мы только что добавили в таблицу
     insert_row_id = db.last_insert_row_id
@@ -215,7 +252,7 @@ class Post
   def save
     file = File.new(file_path, 'w:UTF-8')
 
-    to_strings.each { |string| file.puts(string) }
+    to_strings.each {|string| file.puts(string)}
 
     file.close
   end
